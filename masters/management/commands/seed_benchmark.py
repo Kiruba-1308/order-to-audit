@@ -7,7 +7,7 @@ from django.db import transaction
 
 from inventory.models import StockMovement
 from inventory.services import post_movement
-from masters.models import BOM, BOMLine, Customer, Item, Unit
+from masters.models import BOM, BOMLine, Customer, Item, Supplier, Unit
 
 ROLES = ["Salesman", "Admin", "Production", "Auditor", "Owner"]
 USERS = [
@@ -77,5 +77,6 @@ class Command(BaseCommand):
             kind="RETAILER", state_code="33", gstin="33AAAAA0000A1Z5"))
         Customer.objects.get_or_create(name="Distributor B", defaults=dict(
             kind="DISTRIBUTOR", state_code="29", gstin="29AAAAA0000A1Z5"))
+        Supplier.objects.get_or_create(name="Demo Flour Traders")
 
         self.stdout.write(self.style.SUCCESS("Benchmark master data loaded."))

@@ -41,3 +41,23 @@ class StockMovement(models.Model):
 
     def __str__(self):
         return f"{self.date} {self.item} {self.quantity}"
+
+
+class Purchase(models.Model):
+    supplier = models.ForeignKey("masters.Supplier", on_delete=models.PROTECT)
+    date = models.DateField()
+    invoice_number = models.CharField(max_length=40, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                   on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Purchase {self.pk} - {self.supplier} - {self.date}"
+
+
+class PurchaseLine(models.Model):
+    purchase = models.ForeignKey(Purchase, on_delete=models.CASCADE, related_name="lines")
+    item = models.ForeignKey("masters.Item", on_delete=models.PROTECT)
+    quantity = models.DecimalField(max_digits=14, decimal_places=4)  # in the unit below
+    unit = models.ForeignKey("masters.Unit", on_delete=models.PROTECT)
+    rate = models.DecimalField(max_digits=14, decimal_places=4)      # price per that unit
