@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>Owner dashboard</h2>
+<p>{{ today }} · Orders today: <strong>{{ orders_today }}</strong> ·
+Waiting for approval: <strong>{{ pending_orders }}</strong> ·
+Low-stock items: <strong>{% if low_count %}<span class="bad">{{ low_count }}</span>{% else %}0{% endif %}</strong> ·
+Outstanding dues: <strong>₹{{ dues_total }}</strong></p>
+</div>
+
+<div class="card">
+<h3>Stock levels</h3>
+<div class="table-wrap"><table>
+<tr><th>Type</th><th>Item</th><th>Balance</th><th>Reorder level</th><th></th></tr>
+{% for s in stock %}
+<tr><td>{{ s.item.get_kind_display }}</td><td>{{ s.item.name }}</td>
+<td>{{ s.balance|floatformat:"-4" }} {{ s.item.base_unit.code }}</td>
+<td>{% if s.item.reorder_level is not None %}{{ s.item.reorder_level|floatformat:"-4" }}{% else %}-{% endif %}</td>
+<td>{% if s.low %}<span class="bad">LOW: reorder</span>{% endif %}</td></tr>
+{% endfor %}
+</table></div>
+</div>
+
+<div class="card">
+<h3>Variance alerts (latest runs)</h3>
+{% for a in alerts %}
+<p><a href="{% url 'run_detail' a.run.id %}">Run #{{ a.run.id }}</a> · {{ a.run.date }} · {{ a.run.product.name }} ·
+yield {{ a.run.yield_variance_pct }}%{% if a.run.yield_flagged %} <span class="bad">FLAGGED</span>{% endif %}
+{% for l in a.lines %} · {{ l.item.name }} {{ l.variance_pct }}% <span class="bad">FLAGGED</span>{% endfor %}</p>
+{% empty %}
+<p>No variance beyond tolerance.</p>
+{% endfor %}
+</div>
+
+<div class="card">
+<h3>Cost per packet (latest run)</h3>
+<table>
+<tr><th>Product</th><th>Cost / packet</th><th>Selling price</th><th>Margin</th></tr>
+{% for c in costs %}
+<tr><td>{{ c.item.name }}</td><td>₹{{ c.cpp }}</td><td>₹{{ c.price }}</td><td>₹{{ c.margin|floatformat:2 }}</td></tr>
+{% empty %}
+<tr><td colspan="4">No production runs yet.</td></tr>
+{% endfor %}
+</table>
+</div>
+
+<div class="card">
+<h3>Outstanding dues</h3>
+<table>
+<tr><th>Customer</th><th>Outstanding</th></tr>
+{% for name, amount in dues %}
+<tr><td>{{ name }}</td><td>₹{{ amount }}</td></tr>
+{% empty %}
+<tr><td colspan="2">No dues.</td></tr>
+{% endfor %}
+</table>
+</div>
+{% endblock %}

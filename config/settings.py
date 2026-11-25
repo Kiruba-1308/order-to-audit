@@ -136,3 +136,18 @@ FACTORY = {"name": "Demo Snacks Pvt Ltd", "gstin": "33ABCDE1234F1Z5", "state_cod
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
+
+
+import os
+
+if os.getenv("POSTGRES_DB"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ["POSTGRES_DB"],
+            "USER": os.environ["POSTGRES_USER"],
+            "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+            "HOST": os.getenv("POSTGRES_HOST", "db"),
+            "PORT": "5432",
+        }
+    }
