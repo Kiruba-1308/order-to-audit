@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>Order #{{ order.id }} <span class="tag">{{ order.status }}</span></h2>
+<p>{{ order.customer.name }} (state code {{ order.customer.state_code }}) · by {{ order.salesman.username }} · {{ order.date }}</p>
+
+<form method="post">{% csrf_token %}
+<div class="table-wrap"><table>
+<tr><th>Product</th><th>Qty</th><th>Rate (₹)</th><th>In stock</th><th>Shortage</th></tr>
+{% for row in rows %}
+<tr>
+ <td>{{ row.line.item.name }}</td>
+ <td>{% if order.status == "SUBMITTED" %}<input type="number" step="1" min="1" name="qty_{{ row.line.id }}" value="{{ row.line.quantity|floatformat:0 }}">{% else %}{{ row.line.quantity|floatformat:0 }}{% endif %}</td>
+ <td>{% if order.status == "SUBMITTED" %}<input type="number" step="0.01" min="0" name="rate_{{ row.line.id }}" value="{{ row.line.rate }}">{% else %}{{ row.line.rate }}{% endif %}</td>
+ <td>{{ row.available|floatformat:0 }}</td>
+ <td>{% if row.shortage > 0 %}<span class="bad">short by {{ row.shortage|floatformat:0 }}</span>{% else %}OK{% endif %}</td>
+</tr>
+{% endfor %}
+</table></div>
+{% if order.status == "SUBMITTED" %}<p><button name="action" value="update">Save changes</button></p>{% endif %}
+</form>
+
+{% if order.status == "SUBMITTED" %}
+<form method="post" style="display:inline">{% csrf_token %}<button class="green" name="action" value="approve">Approve</button></form>
+<form method="post" style="display:inline">{% csrf_token %}<button class="red" name="action" value="reject">Reject</button></form>
+{% elif order.status == "APPROVED" %}
+<form method="post">{% csrf_token %}<button name="action" value="invoice">Raise GST invoice</button></form>
+{% elif order.status == "INVOICED" %}
+<form method="post">{% csrf_token %}<button name="action" value="dispatch">Record dispatch</button></form>
+{% endif %}
+</div>
+
+{% for inv in invoices %}
+<div class="card">
+<h3>Invoice {{ inv.number }}</h3>
+<p>Taxable ₹{{ inv.taxable_value }} ·
+{% if inv.is_igst %}IGST ₹{{ inv.igst }}{% else %}CGST ₹{{ inv.cgst }} + SGST ₹{{ inv.sgst }}{% endif %}
+· <strong>Total ₹{{ inv.total }}</strong></p>
+<p>Paid ₹{{ inv.paid }} · Outstanding <strong>₹{{ inv.outstanding }}</strong> · Dispatched: {{ inv.dispatched_on|default:"not yet" }}</p>
+{% if inv.payments.exists %}
+<table><tr><th>Date</th><th>Amount</th><th>Mode</th><th>Reference</th></tr>
+{% for p in inv.payments.all %}<tr><td>{{ p.date }}</td><td>₹{{ p.amount }}</td><td>{{ p.mode }}</td><td>{{ p.reference }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+{% if inv.outstanding > 0 %}
+<form method="post">{% csrf_token %}
+<p>Record payment:
+<input type="number" step="0.01" min="0.01" name="amount" value="{{ inv.outstanding }}">
+<select name="mode" style="width:auto"><option>CASH</option><option>UPI</option><option>BANK</option></select>
+<input type="text" name="reference" placeholder="Reference" style="width:160px">
+<button name="action" value="payment">Save payment</button></p>
+</form>
+{% endif %}
+</div>
+{% endfor %}
+{% endblock %}

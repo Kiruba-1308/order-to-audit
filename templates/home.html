@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>Welcome, {{ user.username }}</h2>
+<p>Role: {% for r in roles %}<span class="tag">{{ r }}</span> {% endfor %}</p>
+<ul>
+{% if "Salesman" in roles %}
+ <li><a href="{% url 'order_new' %}">Take a new order</a></li>
+ <li><a href="{% url 'my_orders' %}">My orders and customer-wise sales</a></li>
+{% endif %}
+{% if "Admin" in roles %}
+ <li><a href="{% url 'admin_orders' %}">Incoming orders: approve, invoice, dispatch, payments</a></li>
+{% endif %}
+</ul>
+</div>
+{% endblock %}

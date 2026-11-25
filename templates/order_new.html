@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>New order</h2>
+<form method="post">{% csrf_token %}
+<p><label>Customer<br>
+<select name="customer" required>
+ <option value="">Select customer</option>
+ {% for c in customers %}<option value="{{ c.id }}">{{ c.name }} ({{ c.get_kind_display }})</option>{% endfor %}
+</select></label></p>
+<div class="table-wrap"><table>
+<tr><th>Product</th><th>Price</th><th>Qty</th></tr>
+{% for i in items %}
+<tr><td>{{ i.name }}</td><td>₹{{ i.selling_price }}</td>
+<td><input type="number" name="qty_{{ i.id }}" min="0" step="1" inputmode="numeric"></td></tr>
+{% endfor %}
+</table></div>
+<p><textarea name="notes" rows="2" placeholder="Notes (optional)"></textarea></p>
+<button>Submit order</button>
+</form>
+</div>
+{% endblock %}

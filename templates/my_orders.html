@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>My orders</h2>
+<p><a href="{% url 'order_new' %}">+ New order</a></p>
+<div class="table-wrap"><table>
+<tr><th>#</th><th>Date</th><th>Customer</th><th>Value (before tax)</th><th>Status</th></tr>
+{% for o in orders %}
+<tr><td>{{ o.id }}</td><td>{{ o.date }}</td><td>{{ o.customer.name }}</td><td>₹{{ o.total_value }}</td><td><span class="tag">{{ o.status }}</span></td></tr>
+{% empty %}
+<tr><td colspan="5">No orders yet.</td></tr>
+{% endfor %}
+</table></div>
+</div>
+<div class="card">
+<h3>Customer-wise sales</h3>
+<table>
+<tr><th>Customer</th><th>Order value (before tax)</th></tr>
+{% for name, total in by_customer %}
+<tr><td>{{ name }}</td><td>₹{{ total }}</td></tr>
+{% empty %}
+<tr><td colspan="2">Nothing yet.</td></tr>
+{% endfor %}
+</table>
+</div>
+{% endblock %}

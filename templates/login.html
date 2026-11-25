@@ -1,0 +1,13 @@
+
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>Login</h2>
+<form method="post">{% csrf_token %}
+{% if form.errors %}<div class="msg error">Wrong username or password.</div>{% endif %}
+<p><label>Username<br>{{ form.username }}</label></p>
+<p><label>Password<br>{{ form.password }}</label></p>
+<button>Login</button>
+</form>
+</div>
+{% endblock %}
