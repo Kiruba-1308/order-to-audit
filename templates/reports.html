@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>Reports</h2>
+<form method="get">
+<p>From <input type="date" name="from" value="{{ d1|date:'Y-m-d' }}"> To <input type="date" name="to" value="{{ d2|date:'Y-m-d' }}"></p>
+<p style="font-size:13px">Pick the dates, then click a report to download it as CSV (opens in Excel).</p>
+{% for key, title in reports %}
+<p><button type="submit" formaction="{% url 'report_download' key %}">{{ title }}</button></p>
+{% endfor %}
+</form>
+</div>
+{% endblock %}

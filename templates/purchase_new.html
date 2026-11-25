@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>Record purchase</h2>
+<form method="post">{% csrf_token %}
+<p><label>Supplier<br><select name="supplier" required>
+{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+</select></label></p>
+<p><label>Supplier invoice no.<br><input type="text" name="invoice_number"></label></p>
+<p><label>Item (base unit in brackets)<br><select name="item" required>
+{% for i in items %}<option value="{{ i.id }}">{{ i.name }} ({{ i.base_unit.code }})</option>{% endfor %}
+</select></label></p>
+<p><label>Quantity<br><input type="number" name="quantity" step="0.0001" min="0.0001" required></label></p>
+<p><label>Unit (choose the same unit you are buying in, e.g. kg)<br><select name="unit" required>
+{% for u in units %}<option value="{{ u.id }}">{{ u.code }}</option>{% endfor %}
+</select></label></p>
+<p><label>Rate per unit (₹)<br><input type="number" name="rate" step="0.0001" min="0" required></label></p>
+<button>Save purchase</button>
+</form>
+</div>
+{% endblock %}

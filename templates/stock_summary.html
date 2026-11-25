@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>Stock summary</h2>
+<form method="get">
+From <input type="date" name="from" value="{{ d1|date:'Y-m-d' }}">
+To <input type="date" name="to" value="{{ d2|date:'Y-m-d' }}">
+<button>Show</button>
+{% if "Auditor" in roles or "Admin" in roles or "Owner" in roles %}
+<button formaction="{% url 'report_download' 'stock_summary' %}">Download CSV</button>
+{% endif %}
+</form>
+<p style="font-size:13px">Opening + receipts − issues = closing. Raw and packaging are valued at weighted average cost; finished goods at the latest run's cost per packet.</p>
+<div class="table-wrap"><table>
+<tr><th>Type</th><th>Item</th><th>Unit</th><th>Opening</th><th>Receipts</th><th>Issues</th><th>Closing</th><th>Avg cost</th><th>Value ₹</th></tr>
+{% for r in rows %}
+<tr><td>{{ r.kind }}</td><td>{{ r.item.name }}</td><td>{{ r.unit }}</td>
+<td>{{ r.opening|floatformat:"-4" }}</td><td>{{ r.receipts|floatformat:"-4" }}</td><td>{{ r.issues|floatformat:"-4" }}</td>
+<td><strong>{{ r.closing|floatformat:"-4" }}</strong></td><td>{{ r.avg_cost|floatformat:2 }}</td><td>{{ r.value|floatformat:2 }}</td></tr>
+{% endfor %}
+</table></div>
+</div>
+{% endblock %}

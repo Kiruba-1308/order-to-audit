@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>Production run #{{ run.id }}: {{ run.product.name }}</h2>
+<p>{{ run.date }} · recipe {{ run.bom.name }} · {{ run.batches|floatformat:"-2" }} batch(es)</p>
+<p>Expected output <strong>{{ run.expected_output|floatformat:"-2" }}</strong> · Actual <strong>{{ run.actual_output|floatformat:"-2" }}</strong> ·
+Yield variance <strong>{{ run.yield_variance_pct }}%</strong> {% if run.yield_flagged %}<span class="bad">FLAGGED (beyond {{ run.bom.tolerance_pct }}%)</span>{% endif %}</p>
+<div class="table-wrap"><table>
+<tr><th>Material</th><th>Unit</th><th>Planned</th><th>Issued</th><th>Wastage</th><th>Actual used</th><th>Variance</th></tr>
+{% for l in lines %}
+<tr><td>{{ l.item.name }}</td><td>{{ l.item.base_unit.code }}</td><td>{{ l.planned_qty|floatformat:"-4" }}</td>
+<td>{{ l.issued_qty|floatformat:"-4" }}</td><td>{{ l.wastage_qty|floatformat:"-4" }}</td><td>{{ l.actual_qty|floatformat:"-4" }}</td>
+<td>{{ l.variance_pct }}% {% if l.flagged %}<span class="bad">FLAGGED</span>{% endif %}</td></tr>
+{% endfor %}
+</table></div>
+</div>
+<div class="card">
+<h3>Costing</h3>
+<p>Materials ₹{{ run.material_cost }} · Labour ₹{{ run.labour_cost }} · Gas / power ₹{{ run.overhead_cost }} · Total ₹{{ run.total_cost }}</p>
+<p>Cost per packet: <strong>{% if cpp %}₹{{ cpp }}{% else %}n/a{% endif %}</strong>
+{% if margin is not None %} · Selling price ₹{{ run.product.selling_price }} · Margin ₹{{ margin|floatformat:2 }} ({{ margin_pct }}%){% endif %}</p>
+{% if "Production" in roles or "Admin" in roles %}
+<form method="post" action="{% url 'run_costs' run.id %}">{% csrf_token %}
+Labour ₹ <input type="number" name="labour" value="{{ run.labour_cost }}" step="0.01" min="0" style="width:110px">
+Gas / power ₹ <input type="number" name="overhead" value="{{ run.overhead_cost }}" step="0.01" min="0" style="width:110px">
+<button>Save costs</button>
+</form>
+{% endif %}
+</div>
+{% endblock %}

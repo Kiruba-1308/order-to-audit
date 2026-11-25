@@ -33,6 +33,8 @@
 {% for inv in invoices %}
 <div class="card">
 <h3>Invoice {{ inv.number }}</h3>
+<p><a href="{% url 'invoice_pdf' inv.id %}" target="_blank">Download PDF</a> ·
+<a href="https://wa.me/?text=Invoice%20{{ inv.number|urlencode:'' }}%20total%20Rs%20{{ inv.total }}" target="_blank">Share on WhatsApp</a></p>
 <p>Taxable ₹{{ inv.taxable_value }} ·
 {% if inv.is_igst %}IGST ₹{{ inv.igst }}{% else %}CGST ₹{{ inv.cgst }} + SGST ₹{{ inv.sgst }}{% endif %}
 · <strong>Total ₹{{ inv.total }}</strong></p>

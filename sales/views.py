@@ -11,8 +11,10 @@ from inventory.services import stock_balance
 from masters.models import Customer, Item
 
 from . import services
-from .models import Order
+from django.http import HttpResponse
 
+from .models import Invoice, Order
+from .pdf import invoice_pdf
 
 @login_required
 def home(request):
@@ -126,3 +128,13 @@ def order_detail(request, pk):
                      "shortage": max(line.quantity - available, Decimal("0"))})
     return render(request, "order_detail.html",
                   {"order": order, "rows": rows, "invoices": order.invoices.all()})
+
+
+
+@role_required("Admin", "Auditor", "Owner")
+def invoice_download(request, pk):
+    invoice = get_object_or_404(Invoice, pk=pk)
+    response = HttpResponse(invoice_pdf(invoice), content_type="application/pdf")
+    name = invoice.number.replace("/", "-")
+    response["Content-Disposition"] = f'inline; filename="invoice_{name}.pdf"'
+    return response

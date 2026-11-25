@@ -11,6 +11,18 @@
 {% if "Admin" in roles %}
  <li><a href="{% url 'admin_orders' %}">Incoming orders: approve, invoice, dispatch, payments</a></li>
 {% endif %}
+{% if "Production" in roles or "Admin" in roles %}
+ <li><a href="{% url 'purchase_new' %}">Record a purchase</a></li>
+ <li><a href="{% url 'run_new' %}">New production run</a></li>
+{% endif %}
+{% if "Production" in roles or "Admin" in roles or "Owner" in roles or "Auditor" in roles %}
+ <li><a href="{% url 'run_list' %}">Production runs and variance</a></li>
+ <li><a href="{% url 'stock_summary' %}">Stock summary</a></li>
+ <li><a href="{% url 'stock_ledger' %}">Stock ledger</a></li>
+{% endif %}
+{% if "Auditor" in roles or "Admin" in roles or "Owner" in roles %}
+ <li><a href="{% url 'reports' %}">Monthly reports (CSV export)</a></li>
+{% endif %}
 </ul>
 </div>
 {% endblock %}

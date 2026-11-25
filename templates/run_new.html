@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+<h2>New production run</h2>
+<p>Recipe: <strong>{{ bom.name }}</strong> · one batch = {{ bom.expected_yield|floatformat:"-2" }} packets · tolerance {{ bom.tolerance_pct }}%</p>
+<form method="post">{% csrf_token %}
+<input type="hidden" name="bom" value="{{ bom.id }}">
+<p><label>Batches<br><input type="number" name="batches" value="1" step="0.01" min="0.01"></label></p>
+<div class="table-wrap"><table>
+<tr><th>Material</th><th>Unit</th><th>Standard / batch</th><th>Issued</th><th>Wastage / damaged</th></tr>
+{% for line in bom.lines.all %}
+<tr><td>{{ line.item.name }}</td><td>{{ line.unit.code }}</td><td>{{ line.quantity|floatformat:"-4" }}</td>
+<td><input type="number" name="issue_{{ line.item.id }}" value="{{ line.quantity|floatformat:'-4' }}" step="0.0001" min="0"></td>
+<td><input type="number" name="waste_{{ line.item.id }}" value="0" step="0.0001" min="0"></td></tr>
+{% endfor %}
+</table></div>
+<p><label>Actual good output (packets)<br><input type="number" name="actual_output" step="1" min="0" required></label></p>
+<p>Costs (optional, can be added later): labour ₹ <input type="number" name="labour" value="0" step="0.01" min="0" style="width:110px">
+gas / power ₹ <input type="number" name="overhead" value="0" step="0.01" min="0" style="width:110px"></p>
+<button>Save production run</button>
+</form>
+</div>
+{% endblock %}
