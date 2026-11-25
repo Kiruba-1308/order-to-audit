@@ -4,17 +4,18 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+from audit.services import log
 from config.roles import role_required
 from inventory.services import stock_balance
 from masters.models import Customer, Item
 
 from . import services
-from django.http import HttpResponse
-
 from .models import Invoice, Order
 from .pdf import invoice_pdf
+
 
 @login_required
 def home(request):
@@ -57,7 +58,7 @@ def my_orders(request):
               .select_related("customer").prefetch_related("lines").order_by("-id"))
     totals = {}
     for o in orders:
-        if o.status != Order.Status.REJECTED:
+        if o.status not in (Order.Status.REJECTED, Order.Status.CANCELLED):
             totals[o.customer.name] = totals.get(o.customer.name, Decimal("0")) + o.total_value
     return render(request, "my_orders.html",
                   {"orders": orders, "by_customer": sorted(totals.items())})
@@ -83,15 +84,22 @@ def order_detail(request, pk):
         try:
             if action == "update" and order.status == Order.Status.SUBMITTED:
                 new_values = []
-                for line in order.lines.all():
+                for line in order.lines.select_related("item"):
                     qty = Decimal(request.POST[f"qty_{line.id}"])
                     rate = Decimal(request.POST[f"rate_{line.id}"])
                     if qty <= 0 or rate < 0:
                         raise ValidationError("Quantity must be above zero and rate cannot be negative.")
                     new_values.append((line, qty, rate))
+                changes = []
                 for line, qty, rate in new_values:
+                    if line.quantity != qty or line.rate != rate:
+                        changes.append(
+                            f"{line.item.name}: qty {format(line.quantity.normalize(), 'f')}"
+                            f"->{format(qty.normalize(), 'f')}, rate {line.rate}->{rate}")
                     line.quantity, line.rate = qty, rate
                     line.save()
+                if changes:
+                    log(request.user, "EDIT_ORDER", order, "; ".join(changes))
                 messages.success(request, "Order updated.")
             elif action == "approve":
                 services.approve_order(order, user=request.user)
@@ -102,13 +110,19 @@ def order_detail(request, pk):
             elif action == "invoice":
                 invoice = services.raise_invoice(order, date=today, user=request.user)
                 messages.success(request, f"Invoice {invoice.number} raised.")
-            elif action in ("dispatch", "payment"):
+            elif action in ("dispatch", "payment", "cancel"):
                 invoice = order.invoices.first()
                 if invoice is None:
                     raise ValidationError("Raise the invoice first.")
                 if action == "dispatch":
                     services.dispatch_invoice(invoice, date=today, user=request.user)
                     messages.success(request, "Dispatch recorded. Stock reduced.")
+                elif action == "cancel":
+                    note = services.cancel_invoice(
+                        invoice, reason=request.POST.get("reason", ""), date=today,
+                        user=request.user)
+                    messages.success(
+                        request, f"Invoice {invoice.number} cancelled. Credit note {note.number} issued.")
                 else:
                     services.record_payment(
                         invoice, amount=Decimal(request.POST["amount"]), date=today,
@@ -128,7 +142,6 @@ def order_detail(request, pk):
                      "shortage": max(line.quantity - available, Decimal("0"))})
     return render(request, "order_detail.html",
                   {"order": order, "rows": rows, "invoices": order.invoices.all()})
-
 
 
 @role_required("Admin", "Auditor", "Owner")

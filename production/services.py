@@ -1,5 +1,7 @@
 from decimal import ROUND_HALF_UP
 from decimal import Decimal as D
+from pdb import run
+from audit.services import log
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -77,4 +79,6 @@ def post_production_run(*, bom, date, actual_output, issues, wastage=None,
 
     run.material_cost = material_cost.quantize(D("0.01"), ROUND_HALF_UP)
     run.save()
+    log(user, "CREATE_RUN", run,
+        f"Output {actual_output} vs expected {expected}; yield variance {yield_var}%")
     return run

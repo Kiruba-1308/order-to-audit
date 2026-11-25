@@ -12,6 +12,7 @@ class Order(models.Model):
         REJECTED = "REJECTED"
         INVOICED = "INVOICED"
         DISPATCHED = "DISPATCHED"
+        CANCELLED = "CANCELLED"
 
     customer = models.ForeignKey("masters.Customer", on_delete=models.PROTECT)
     salesman = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
@@ -52,9 +53,14 @@ class Invoice(models.Model):
     igst = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     total = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     dispatched_on = models.DateField(null=True, blank=True)
+    cancelled_on = models.DateField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
                                    on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_cancelled(self):
+        return self.cancelled_on is not None
 
     @property
     def paid(self):
@@ -62,6 +68,8 @@ class Invoice(models.Model):
 
     @property
     def outstanding(self):
+        if self.is_cancelled:
+            return Decimal("0")
         return self.total - self.paid
 
     def __str__(self):
@@ -79,6 +87,26 @@ class InvoiceLine(models.Model):
     cgst = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     sgst = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     igst = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+
+
+class CreditNote(models.Model):
+    """Cancels a posted invoice. The invoice itself is never deleted."""
+    number = models.CharField(max_length=24, unique=True)  # e.g. CN/2026-27/0001
+    fy = models.CharField(max_length=7)
+    invoice = models.OneToOneField(Invoice, on_delete=models.PROTECT, related_name="credit_note")
+    date = models.DateField()
+    reason = models.CharField(max_length=200)
+    taxable_value = models.DecimalField(max_digits=14, decimal_places=2)
+    cgst = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    sgst = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    igst = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=14, decimal_places=2)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                   on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.number
 
 
 class Payment(models.Model):

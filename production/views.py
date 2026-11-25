@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal, InvalidOperation
+from audit.services import log
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -87,6 +88,29 @@ def run_costs(request, pk):
                 raise ValidationError("Costs cannot be negative.")
             run.labour_cost, run.overhead_cost = labour, overhead
             run.save()
+            messages.success(request, "Costs saved.")
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+        except InvalidOperation:
+            messages.error(request, "Please enter valid numbers.")
+    return redirect("run_detail", pk=pk)
+
+@role_required("Production", "Admin")
+def run_costs(request, pk):
+    run = get_object_or_404(ProductionRun, pk=pk)
+    if request.method == "POST":
+        try:
+            labour = dec(request.POST.get("labour"))
+            overhead = dec(request.POST.get("overhead"))
+            if labour < 0 or overhead < 0:
+                raise ValidationError("Costs cannot be negative.")
+            changed = (run.labour_cost, run.overhead_cost) != (labour, overhead)
+            detail = (f"labour {run.labour_cost}->{labour}, "
+                      f"gas/power {run.overhead_cost}->{overhead}")
+            run.labour_cost, run.overhead_cost = labour, overhead
+            run.save()
+            if changed:
+                log(request.user, "EDIT_RUN_COSTS", run, detail)
             messages.success(request, "Costs saved.")
         except ValidationError as e:
             messages.error(request, " ".join(e.messages))

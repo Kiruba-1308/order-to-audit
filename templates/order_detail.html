@@ -12,9 +12,8 @@
  <td>{{ row.line.item.name }}</td>
  <td>{% if order.status == "SUBMITTED" %}<input type="number" step="1" min="1" name="qty_{{ row.line.id }}" value="{{ row.line.quantity|floatformat:0 }}">{% else %}{{ row.line.quantity|floatformat:0 }}{% endif %}</td>
  <td>{% if order.status == "SUBMITTED" %}<input type="number" step="0.01" min="0" name="rate_{{ row.line.id }}" value="{{ row.line.rate }}">{% else %}{{ row.line.rate }}{% endif %}</td>
- <td>{{ row.available|floatformat:0 }}</td>
- <td>{% if row.shortage > 0 %}<span class="bad">short by {{ row.shortage|floatformat:0 }}</span>{% else %}OK{% endif %}</td>
-</tr>
+ <td>{% if order.status == "SUBMITTED" or order.status == "APPROVED" %}{{ row.available|floatformat:0 }}{% else %}-{% endif %}</td>
+ <td>{% if order.status == "SUBMITTED" or order.status == "APPROVED" %}{% if row.shortage > 0 %}<span class="bad">short by {{ row.shortage|floatformat:0 }}</span>{% else %}OK{% endif %}{% else %}-{% endif %}</td>
 {% endfor %}
 </table></div>
 {% if order.status == "SUBMITTED" %}<p><button name="action" value="update">Save changes</button></p>{% endif %}
@@ -32,7 +31,7 @@
 
 {% for inv in invoices %}
 <div class="card">
-<h3>Invoice {{ inv.number }}</h3>
+<h3>Invoice {{ inv.number }} {% if inv.is_cancelled %}<span class="bad">CANCELLED</span>{% endif %}</h3>
 <p><a href="{% url 'invoice_pdf' inv.id %}" target="_blank">Download PDF</a> ·
 <a href="https://wa.me/?text=Invoice%20{{ inv.number|urlencode:'' }}%20total%20Rs%20{{ inv.total }}" target="_blank">Share on WhatsApp</a></p>
 <p>Taxable ₹{{ inv.taxable_value }} ·
@@ -44,6 +43,10 @@
 {% for p in inv.payments.all %}<tr><td>{{ p.date }}</td><td>₹{{ p.amount }}</td><td>{{ p.mode }}</td><td>{{ p.reference }}</td></tr>{% endfor %}
 </table>
 {% endif %}
+
+{% if inv.is_cancelled %}
+<p class="bad">Credit note {{ inv.credit_note.number }} dated {{ inv.credit_note.date }}: {{ inv.credit_note.reason }} (₹{{ inv.credit_note.total }} reversed)</p>
+{% else %}
 {% if inv.outstanding > 0 %}
 <form method="post">{% csrf_token %}
 <p>Record payment:
@@ -51,6 +54,12 @@
 <select name="mode" style="width:auto"><option>CASH</option><option>UPI</option><option>BANK</option></select>
 <input type="text" name="reference" placeholder="Reference" style="width:160px">
 <button name="action" value="payment">Save payment</button></p>
+</form>
+{% endif %}
+<form method="post" onsubmit="return confirm('Cancel this invoice with a credit note?');">{% csrf_token %}
+<p>Cancel invoice:
+<input type="text" name="reason" placeholder="Reason for credit note" required style="width:260px">
+<button class="red" name="action" value="cancel">Issue credit note</button></p>
 </form>
 {% endif %}
 </div>

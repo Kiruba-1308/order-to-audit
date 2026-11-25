@@ -5,10 +5,11 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
+from audit.services import log
 from inventory.models import StockMovement
 from inventory.services import post_movement, stock_balance
 
-from .models import Invoice, InvoiceLine, Order, OrderLine, Payment
+from .models import CreditNote, Invoice, InvoiceLine, Order, OrderLine, Payment
 
 TWO = D("0.01")
 ZERO = D("0.00")
@@ -40,6 +41,7 @@ def create_order(*, customer, salesman, lines, date, notes=""):
     for item, qty in lines:
         OrderLine.objects.create(order=order, item=item, quantity=D(str(qty)),
                                  rate=item.selling_price)
+    log(salesman, "CREATE_ORDER", order, f"{len(lines)} line(s) for {customer.name}")
     return order
 
 
@@ -64,6 +66,7 @@ def approve_order(order, user=None):
     order.status = Order.Status.APPROVED
     order.approved_by = user
     order.save()
+    log(user, "APPROVE_ORDER", order)
 
 
 def reject_order(order, user=None):
@@ -72,6 +75,7 @@ def reject_order(order, user=None):
     order.status = Order.Status.REJECTED
     order.approved_by = user
     order.save()
+    log(user, "REJECT_ORDER", order)
 
 
 @transaction.atomic
@@ -105,11 +109,14 @@ def raise_invoice(order, *, date, user=None):
     invoice.save()
     order.status = Order.Status.INVOICED
     order.save()
+    log(user, "CREATE_INVOICE", invoice, f"Total {invoice.total} for {customer.name}")
     return invoice
 
 
 @transaction.atomic
 def dispatch_invoice(invoice, *, date, user=None):
+    if invoice.cancelled_on:
+        raise ValidationError("A cancelled invoice cannot be dispatched.")
     if invoice.dispatched_on:
         raise ValidationError("This invoice is already dispatched.")
     lines = list(invoice.lines.select_related("item"))
@@ -126,6 +133,7 @@ def dispatch_invoice(invoice, *, date, user=None):
     invoice.save()
     invoice.order.status = Order.Status.DISPATCHED
     invoice.order.save()
+    log(user, "DISPATCH", invoice, f"Dispatched on {date}")
 
 
 @transaction.atomic
@@ -135,8 +143,43 @@ def record_payment(invoice, *, amount, date, mode="CASH", reference="", user=Non
         raise ValidationError("Payment must be more than zero.")
     if amount > invoice.outstanding:
         raise ValidationError("Payment is more than the outstanding amount.")
-    return Payment.objects.create(invoice=invoice, date=date, amount=amount, mode=mode,
-                                  reference=reference, created_by=user)
+    payment = Payment.objects.create(invoice=invoice, date=date, amount=amount, mode=mode,
+                                     reference=reference, created_by=user)
+    log(user, "PAYMENT", invoice, f"Received {amount} by {mode}")
+    return payment
+
+
+@transaction.atomic
+def cancel_invoice(invoice, *, reason, date, user=None):
+    """Cancel a posted invoice with a credit note. If it was dispatched, the goods are
+    taken back into finished-goods stock. Invoices with payments must be settled first."""
+    if invoice.cancelled_on:
+        raise ValidationError("This invoice is already cancelled.")
+    if not reason.strip():
+        raise ValidationError("Enter a reason for the credit note.")
+    if invoice.payments.exists():
+        raise ValidationError("This invoice has payments recorded. Settle them before cancelling.")
+
+    fy = financial_year(date)
+    seq = CreditNote.objects.filter(fy=fy).count() + 1
+    note = CreditNote.objects.create(
+        number=f"CN/{fy}/{seq:04d}", fy=fy, invoice=invoice, date=date, reason=reason.strip(),
+        taxable_value=invoice.taxable_value, cgst=invoice.cgst, sgst=invoice.sgst,
+        igst=invoice.igst, total=invoice.total, created_by=user)
+
+    if invoice.dispatched_on:
+        for line in invoice.lines.select_related("item"):
+            post_movement(item=line.item, date=date,
+                          movement_type=StockMovement.Type.SALES_RETURN,
+                          quantity=line.quantity, source_type="credit_note",
+                          source_id=note.id, remarks=f"Credit note {note.number}", user=user)
+
+    invoice.cancelled_on = date
+    invoice.save()
+    invoice.order.status = Order.Status.CANCELLED
+    invoice.order.save()
+    log(user, "CANCEL_INVOICE", invoice, f"Credit note {note.number}: {reason.strip()}")
+    return note
 
 
 def customer_outstanding(customer):

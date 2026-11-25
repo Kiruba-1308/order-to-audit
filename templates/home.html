@@ -22,6 +22,7 @@
 {% endif %}
 {% if "Auditor" in roles or "Admin" in roles or "Owner" in roles %}
  <li><a href="{% url 'reports' %}">Monthly reports (CSV export)</a></li>
+ <li><a href="{% url 'audit_log' %}">Audit trail</a></li>
 {% endif %}
 </ul>
 </div>
