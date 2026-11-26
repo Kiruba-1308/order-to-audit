@@ -3,7 +3,7 @@
 Prototype for the NIT Tiruchirappalli (Centre for Digital Infrastructure) winter internship task.
 One system that takes a snack factory from a salesman's order to the monthly auditor's reports.
 
-- **Demo video:** [paste unlisted YouTube or Drive link]
+- **Demo video:** https://youtu.be/cdb8xNyMMKY
 - **Repository:** https://github.com/Kiruba-1308/order-to-audit
 - **Design note:** see [DESIGN.md](DESIGN.md) (data model, stock and BOM logic, costing)
 
@@ -95,5 +95,7 @@ Each role sees only its own screens; other pages return 403 Forbidden.
 - Invoice PDFs print "Rs." because the built-in PDF font has no rupee sign.
 
 ## Known gaps
+
+Reports export to CSV only (no PDF export of reports); no screen to post stock adjustments (the ledger supports them); no automatic packet-to-carton conversion (cartons are tracked as a separate packaging item);
 
 Not built: offline order capture with sync; batch and expiry tracking; partial dispatch and returns (a credit note reverses the whole invoice); refunds for paid invoices (an invoice with payments cannot be cancelled); production planning from pending orders; route and GPS visit log; Tally export; e-invoice / e-way bill format; Tamil interface; hosted demo link; edits to posted invoices are not allowed (cancel and re-issue instead).
